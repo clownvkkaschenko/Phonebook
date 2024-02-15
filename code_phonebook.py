@@ -1,37 +1,74 @@
+import os
+import time
 from math import ceil
 from typing import List
 
 import pandas as pd
 from colorama import Fore, Style, init
-from tabulate import tabulate
+from progress.bar import FillingCirclesBar
+from simple_term_menu import TerminalMenu
+from terminaltables import SingleTable
 
 init(autoreset=True)  # colorama
 
 
-class Phonebook:
-    """В классе реализованы пять методов:
+def table_with_phonebook(data_table: List[List], title: str = None) -> str:
+    """Функция для получения данных виде таблицы.
 
-    - display_phonebook: Метод для постраничного вывода контактов.
-    - add_contact: Метод для добавления нового контакта в справочник.
-    - edit_contact: Метод для редактирования контакта в справочнике.
-    - search_contact: Метод для поиска контакта в справочнике.
-    - main: Главное меню, со всем функционалом.
+    Args:
+        - data_table (List[List]): Список списков с данными для таблицы.
+        - title (str): Заголовок таблицы.
+
+    Returns:
+        - Строка, содержащая таблицу, в формате текста.
     """
 
-    FILE_PHONEBOOK: str = 'phonebook.csv'
+    table_instance = SingleTable(data_table, title)
+    table_instance.inner_heading_row_border = False
+    table_instance.inner_row_border = True
+    return table_instance.table
+
+
+def loading_effect(message: str) -> None:
+    """Функция для отображения эффекта загрузки."""
+
+    bar = FillingCirclesBar('Loading', max=20)
+    for _ in [i for i in range(20)]:
+        bar.next()
+        time.sleep(0.1)
+    bar.finish()
+    print(message)
+
+
+class Phonebook:
+    """В классе реализованы шесть методов:
+
+    - display_phonebook: Метод для постраничного вывода контактов.
+    - add_contact: Метод для добавления нового контакта в тел.справочник.
+    - contact_by_idx: Метод для поиска контакта в тел.справочнике, по индексу.
+    - edit_contact: Метод для редактирования контакта в тел.справочнике.
+    - search_contact: Метод для поиска контакта в тел.справочнике.
+    - main_menu: Главное меню, со всем функционалом.
+    """
+
+    FILE_PHONEBOOK: str = 'phonebook_ex.csv'
     COLUMNS_COUNT: int = 6
     COLUMNS_NAME: List[str] = [
         'фамилия', 'имя', 'отчество', 'название организации',
         'телефон рабочий', 'телефон сотовый'
     ]
-    PAGE_SIZE = 10
+    PAGE_SIZE: int = 10
 
-    def display_phonebook(
-            self, page_number=1,
-            message: str = None
-    ) -> None:
-        """Метод для постраничного вывода контактов."""
+    def display_phonebook(self, message: str = None, current_page: int = 1) -> None:
+        """Метод для постраничного вывода контактов.
 
+        Args:
+            - message (str):  Применяется для отображения: предупреждений, ошибок или
+                              дополнительной информации.
+            - current_page (int): Номер текущей страницы.
+        """
+
+        os.system('cls||clear')
         if message:
             print(message)
 
@@ -39,142 +76,219 @@ class Phonebook:
         cnt_rows: int = df.shape[0]
 
         if cnt_rows <= self.PAGE_SIZE:
-            df_str: str = tabulate(df, showindex=True, headers=df.columns)
-            return self.main(message=('Вы находитесь на странице «1/'
-                                      f'1»\n{df_str}\n'))
+            df_to_list: List[List] = [self.COLUMNS_NAME] + df.values.tolist()
+            phonebook_table: str = table_with_phonebook(
+                data_table=df_to_list, title='Вы находитесь на странице «1/1»')
+            return self.main_menu(message=phonebook_table)
 
-        start_idx = (page_number - 1) * self.PAGE_SIZE
-        end_idx = start_idx + self.PAGE_SIZE
-        df_on_page = df.iloc[start_idx:end_idx]
-        last_page = ceil(cnt_rows / self.PAGE_SIZE)
+        start_idx: int = (current_page - 1) * self.PAGE_SIZE
+        end_idx: int = start_idx + self.PAGE_SIZE
+        last_page: int = ceil(cnt_rows / self.PAGE_SIZE)
 
-        switch: str = input(
-            f'Вы находитесь на странице «{page_number}/{last_page}»\n'
-            f'{tabulate(df_on_page, showindex=True, headers=df.columns)}\n'
-            f'{"-"*70}\n'
-            f'{Fore.GREEN}Для перехода на следующую страницу отправьте «n»\n'
-            'Для перехода на предыдущую страницу отправьте «e»\n'
-            f'Для выхода в главное меню отправьте «m»{Style.RESET_ALL}\n'
+        df_on_current_page: pd.DataFrame = df.iloc[start_idx:end_idx]
+        df_to_list: List[List] = [self.COLUMNS_NAME] + df_on_current_page.values.tolist()
+        phonebook_table: str = table_with_phonebook(
+            data_table=df_to_list,
+            title=f'Вы находитесь на странице «{current_page}/{last_page}»')
+
+        print(phonebook_table)
+
+        menu = TerminalMenu(
+            [
+                'Перейти на следующую страницу.',
+                'Перейти на предыдущую страницу.',
+                'Выход в главное меню.'
+            ],
+            title='«Display phonebook»'
         )
+        selected_index = menu.show()
 
-        if switch == 'n' and last_page == page_number:
+        if selected_index == 0:
+            if last_page != current_page:
+                return self.display_phonebook(current_page=current_page+1)
+
             return self.display_phonebook(
-                page_number=page_number,
-                message=(f'{Fore.RED}Вы уже находитесь на '
-                         'последней страничке.')
+                current_page=current_page,
+                message=(f'{Fore.RED}Вы уже находитесь на последней страничке.\n'
+                         f'{Style.RESET_ALL}')
             )
-        elif switch == 'n':
-            return self.display_phonebook(page_number=page_number+1)
-        elif switch == 'e' and page_number == 1:
+
+        elif selected_index == 1:
+            if current_page != 1:
+                return self.display_phonebook(current_page=current_page-1)
+
             return self.display_phonebook(
-                message=(f'{Fore.RED}Вы уже находитесь '
-                         'на первой страничке.')
+                message=(f'{Fore.RED}Вы уже находитесь на первой страничке\n{Style.RESET_ALL}')
             )
-        elif switch == 'e':
-            return self.display_phonebook(page_number=page_number-1)
-        elif switch == 'm':
-            return self.main()
-        else:
-            return self.display_phonebook(
-                page_number=page_number,
-                message=f'{Fore.RED}Такого варианта нет.')
+
+        elif selected_index == 2:
+            return self.main_menu()
 
     def add_contact(self, message: str = None) -> None:
-        """Метод для добавления нового контакта в справочник."""
+        """Метод для добавления нового контакта в телефонный справочник.
 
+        Args:
+            - message (str):  Применяется для отображения: предупреждений, ошибок или
+                              дополнительной информации.
+        """
+
+        os.system('cls||clear')
         if message:
             print(message)
 
-        data: List[str] = input(
+        data_contact: List[str] = input(
             ('Для добавления новой записи введите данные в формате:\n'
-             '«фамилия, имя, отчество, название организации, '
-             'телефон рабочий, телефон сотовый»\n\n'
-             'Пример:\nИванов, Иван, Иванович, VK, 32999, 89999999999\n\n'
+             '«фамилия, имя, отчество, название организации, телефон рабочий, телефон сотовый»'
+             '\n\nПример:\nИванов, Иван, Иванович, VK, 32999, 89999999999\n\n'
              'Введите данные или введите «m» для выхода в главное меню: ')
         ).split(', ')
 
-        if data == ['m']:
-            return self.main()
+        if data_contact == ['m']:
+            return self.main_menu()
 
-        if len(data) != self.COLUMNS_COUNT:
-            message = (f'{"-"*70}\n{Fore.RED}'
-                       'Количество столбцов в справочнике не совпадает с '
-                       'количеством переданных данных.\n')
-            self.add_contact(message=message)
+        if len(data_contact) != self.COLUMNS_COUNT:
+            return self.add_contact(
+                message=(f'{Fore.RED}Количество столбцов в справочнике не совпадает с '
+                         'количеством переданных данных.\n')
+            )
 
-        new_contact: pd.DataFrame = pd.DataFrame([data])
-        new_contact.to_csv(self.FILE_PHONEBOOK, mode='a',
-                           header=False, index=False)
+        try:
+            new_contact: pd.DataFrame = pd.DataFrame([data_contact])
+            new_contact.to_csv(self.FILE_PHONEBOOK, mode='a',
+                               header=False, index=False)
+        except UnicodeEncodeError:
+            return self.add_contact(message=(f'{Fore.RED}Ошибка кодировки!\n'))
 
-        return self.main(message=f'{Fore.GREEN}Данные добавлены!\n')
+        loading_effect(message=f'{Fore.GREEN}Данные добавлены!!!\n')
 
-    def edit_contact(self, number: int = None, message: str = None) -> str:
-        """Метод для редактирования контакта в справочнике."""
+        menu = TerminalMenu(
+            [
+                'Добавить ещё один контакт.',
+                'Выйти в главное меню.'
+            ],
+            title='«Add contact»'
+        )
+        selected_index = menu.show()
 
+        if selected_index == 0:
+            return self.add_contact()
+        elif selected_index == 1:
+            return self.main_menu()
+
+    def contact_by_idx(self, message: str = None, idx: int = None) -> None:
+        """Метод для поиска контакта в телефонном справочнике, по индексу.
+
+        Args:
+            - message (str):  Применяется для отображения: предупреждений, ошибок или
+                              дополнительной информации.
+            - idx (int): Индекс строки.
+        """
+
+        os.system('cls||clear')
         if message:
             print(message)
 
-        if not number:
-            number: str = input(
-                'Введите номер строки с контактом, который хотите изменить, '
+        if idx is None:
+            idx: str = input(
+                'Введите индекс строки с контактом, который хотите изменить, '
                 'или введите «m» для выхода в главное меню: ')
 
-            if number == 'm':
-                return self.main()
+            if idx == 'm':
+                return self.main_menu()
 
             try:
-                number = int(number)
+                idx = int(idx)
             except ValueError:
-                return self.edit_contact(
-                    message=f'{Fore.RED}Введите номер строки, а не символ.'
+                return self.contact_by_idx(
+                    message=f'{Fore.RED}Введите номер строки, а не символ.\n'
                 )
 
         df: pd.DataFrame = pd.read_csv(self.FILE_PHONEBOOK)
 
         try:
-            df_to_list: List = df.iloc[number].values.tolist()
+            df_to_list: List = df.iloc[idx].values.tolist()
         except IndexError:
-            return self.edit_contact(
-                message=f'{Fore.RED}Строки с номером «{number}» не существует'
+            return self.contact_by_idx(
+                message=f'{Fore.RED}Строки с номером «{idx}» не существует\n'
             )
 
+        return self.edit_contact(idx=idx, df_to_list=df_to_list, df=df)
+
+    def edit_contact(
+            self, idx: int, df_to_list: List, df: pd.DataFrame, message: str = None
+    ) -> None:
+        """Метод для редактирования контакта в справочнике.
+
+        Args:
+            - idx (int): Индекс строки.
+            - df_to_list (List):
+            - df (pd.DataFrame):
+            - message (str):  Применяется для отображения: предупреждений, ошибок или
+                              дополнительной информации.
+        """
+
+        os.system('cls||clear')
+        if message:
+            print(message)
+
         fields_to_change: List[str] = input(
-            f'\nВот выбранная вами строка:\n{", ".join(df_to_list)}\n'
+            f'Вот выбранная вами строка с номером «{idx}»:\n{", ".join(df_to_list)}\n'
             f'{"-"*70}\n'
-            'Какие столбцы вы хотите изменить? Напишите нужные столбцы в '
-            'таком формате:\n«фамилия, имя, отчество, название организации, '
-            'телефон рабочий, телефон сотовый»\n\n'
-            f'Пример:\nфамилия, название организации\n\n'
+            'Какие столбцы вы хотите изменить? Напишите нужные столбцы в таком формате:\n'
+            '«фамилия, имя, отчество, название организации, телефон рабочий, телефон сотовый»'
+            f'\n\nПример:\nфамилия, название организации\n\n'
             'Введите столбцы или введите «m» для выхода в главное меню: '
         ).split(', ')
 
         if fields_to_change == ['m']:
-            return self.main()
+            return self.main_menu()
 
         for column in fields_to_change:
             if column not in self.COLUMNS_NAME:
                 return self.edit_contact(
-                    number=number,
-                    message=(f'{Fore.RED}Вы ввели несуществующий '
-                             f'столбец: «{column}»')
+                    idx=idx, df_to_list=df_to_list, df=df,
+                    message=(f'{Fore.RED}Вы ввели несуществующий столбец: «{column}»\n')
                 )
 
         data_to_update = {}
         for field in fields_to_change:
-            data_to_update[field] = input('Введите новое значение для '
-                                          f'столбца «{field}»: ')
+            data_to_update[field] = input(f'Введите новое значение для столбца «{field}»: ')
 
-        for column, value in data_to_update.items():
-            df.at[number, column] = value
-        df.to_csv(self.FILE_PHONEBOOK, index=False)
+        try:
+            for column, value in data_to_update.items():
+                df.at[idx, column] = value
+            df.to_csv(self.FILE_PHONEBOOK, index=False)
+        except UnicodeEncodeError:
+            return self.edit_contact(
+                idx=idx, df_to_list=df_to_list, df=df,
+                message=(f'{Fore.RED}Ошибка кодировки!\n')
+            )
 
-        return self.main(message=f'{Fore.GREEN}Спасибо, данные обновлены!\n')
+        loading_effect(message=f'{Fore.GREEN}Данные обновлены!!!\n')
 
-    def search_contact(self, message: str = None) -> str:
+        menu = TerminalMenu(
+            [
+                'Изменить ещё один контакт.',
+                'Выйти в главное меню.'
+            ],
+            title='«Edit contact»'
+        )
+        selected_index = menu.show()
+
+        if selected_index == 0:
+            return self.contact_by_idx()
+        elif selected_index == 1:
+            return self.main_menu()
+
+    def search_contact(self, message: str = None) -> None:
+        """Метод для поиска контакта по одной или нескольким характеристикам.
+
+        Args:
+            - message (str):  Применяется для отображения: предупреждений, ошибок или
+                              дополнительной информации.
         """
-        Метод для поиска контакта по одной или нескольким характеристикам.
-        """
 
+        os.system('cls||clear')
         if message:
             print(message)
 
@@ -189,66 +303,76 @@ class Phonebook:
         ).split(', ')
 
         if fields_to_search == ['m']:
-            return self.main()
+            return self.main_menu()
 
         for column in fields_to_search:
             if column not in self.COLUMNS_NAME:
                 return self.search_contact(
-                    message=(f'\n{Fore.RED}Вы ввели несуществующий '
-                             f'столбец: «{column}»')
+                    message=(f'{Fore.RED}Вы ввели несуществующий столбец: «{column}»\n')
                 )
 
         data_to_search = {}
         for field in fields_to_search:
-            data_to_search[field] = input('Введите значение для поиска в '
-                                          f'столбце «{field}»: ')
+            data_to_search[field] = input(f'Введите значение для поиска в столбце «{field}»: ')
 
         for column, value in data_to_search.items():
             df = df[df[column] == value]
 
         if df.empty:
-            return self.main(message=f'{Fore.RED}Контакты не найдены.\n')
+            loading_effect(message=f'{Fore.RED}Контакты не найдены.\n')
+        else:
+            df_to_list: List[List] = [self.COLUMNS_NAME] + df.values.tolist()
+            table = table_with_phonebook(data_table=df_to_list)
+            loading_effect(message=f'{Fore.GREEN}Данные найдены!!!{Style.RESET_ALL}\n'
+                                   f'{table}\n')
 
-        result: str = tabulate(df, showindex=False, headers=df.columns)
-        return self.main(message=(f'\n{Fore.GREEN}Найденные контакты:'
-                                  f'{Style.RESET_ALL}\n{result}\n'))
+        menu = TerminalMenu(
+            [
+                'Найти ещё один контакт.',
+                'Выйти в главное меню.'
+            ],
+            title='«Search contact»'
+        )
+        selected_index = menu.show()
 
-    def main(self, message: str = None):
+        if selected_index == 0:
+            return self.search_contact()
+        elif selected_index == 1:
+            return self.main_menu()
+
+    def main_menu(self, message: str = None) -> None:
         """Главное меню, со всем функционалом."""
 
+        os.system('cls||clear')
         if message:
             print(message)
 
-        option = input(
-            ('Главное меню\n'
-             f'{"-"*70}\n'
-             'Введите «1», для вывода всех записей из справочника на экран.\n'
-             'Введите «2», для добавления новой записи в справочник.\n'
-             'Введите «3», для редактирования записи.\n'
-             'Введите «4», для поиска записей.\n'
-             'Введите «0», для выхода.\n'
-             f'{"-"*70}\n')
+        menu = TerminalMenu(
+            ['Вывести список контактов.',
+             'Добавить контакт.',
+             'Редактировать контакт.',
+             'Поиск контакта.',
+             'Выйти из приложения.'],
+            title='«Phonebook App»'
         )
+        selected_index = menu.show()
 
-        if option == '1':
+        if selected_index == 0:
             self.display_phonebook()
 
-        elif option == '2':
+        elif selected_index == 1:
             self.add_contact()
 
-        elif option == '3':
-            self.edit_contact()
+        elif selected_index == 2:
+            self.contact_by_idx()
 
-        elif option == '4':
+        elif selected_index == 3:
             self.search_contact()
 
-        elif option == '0':
-            print('Вы вышли из программы.')
+        elif selected_index == 4:
+            os.system('cls||clear')
             exit()
-
-        else:
-            self.main(message=f'{Fore.RED}Такого варианта нет')
 
 
 phonebook = Phonebook()
-phonebook.main()
+phonebook.main_menu()

@@ -1,17 +1,18 @@
 <div id="header" align="center">
   <h1>Phonebook</h1>
-  <img src="https://img.shields.io/badge/Python-3.10.11-F8F8FF?style=for-the-badge&logo=python&logoColor=20B2AA">
-  <img src="https://img.shields.io/badge/Pandas-2.2.0-F8F8FF?style=for-the-badge&logo=pandas&logoColor=150458">
-  <img src="https://img.shields.io/badge/Numpy-1.26.4-F8F8FF?style=for-the-badge&logo=numpy&logoColor=013243">
+  <img src="https://img.shields.io/badge/Python-3.8.10-F8F8FF?style=for-the-badge&logo=python&logoColor=20B2AA">
+  <img src="https://img.shields.io/badge/Pandas-2.0.3-F8F8FF?style=for-the-badge&logo=pandas&logoColor=150458">
+  <img src="https://img.shields.io/badge/Numpy-1.24.4-F8F8FF?style=for-the-badge&logo=numpy&logoColor=013243">
 </div>
 
 # Запуск проекта:
 
+- В проекте используется библиотека **simple-term-menu**, которая не работает на Windows. Если вы используете Windows, то проект можно запустить, например, в WSL-Ubuntu.
 - Клонируйте репозиторий и перейдите в него.
 - Установите и активируйте виртуальное окружение.
     ```
-    python3.10 -m venv venv
-    source venv/Scripts/activate
+    python3 -m venv env
+    source env/bin/activate
     ```
 - Установите зависимости из файла requirements.txt
     ```
@@ -23,9 +24,7 @@
     python code_phonebook.py
     ```
 
-- Пример работы можно увидеть на скринах, в папке [example](./example/)
-
-# Описание проекта:
+# Техническое задание проекта:
 
 Реализовать телефонный справочник со следующими возможностями:
 - Вывод постранично записей из справочника на экран.
